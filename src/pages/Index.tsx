@@ -24,14 +24,14 @@ const Index = () => {
 
         {/* Main dashboard tabs */}
         <Tabs defaultValue="monitoring" className="w-full">
-          <TabsList className="grid w-full grid-cols-7 mb-6">
-            <TabsTrigger value="monitoring">Live Monitoring</TabsTrigger>
-            <TabsTrigger value="architecture">System Architecture</TabsTrigger>
-            <TabsTrigger value="defects">AI Defect Detection</TabsTrigger>
-            <TabsTrigger value="compliance">Standards Compliance</TabsTrigger>
-            <TabsTrigger value="exceptions">Exception Reports</TabsTrigger>
-            <TabsTrigger value="summary">Summary Reports</TabsTrigger>
-            <TabsTrigger value="technical">Technical Specs</TabsTrigger>
+          <TabsList className="flex flex-wrap gap-2 h-auto p-2 mb-6">
+            <TabsTrigger value="monitoring" className="flex-1 min-w-fit">Live Monitoring</TabsTrigger>
+            <TabsTrigger value="architecture" className="flex-1 min-w-fit">System Architecture</TabsTrigger>
+            <TabsTrigger value="defects" className="flex-1 min-w-fit">AI Defect Detection</TabsTrigger>
+            <TabsTrigger value="compliance" className="flex-1 min-w-fit">Standards Compliance</TabsTrigger>
+            <TabsTrigger value="exceptions" className="flex-1 min-w-fit">Exception Reports</TabsTrigger>
+            <TabsTrigger value="summary" className="flex-1 min-w-fit">Summary Reports</TabsTrigger>
+            <TabsTrigger value="technical" className="flex-1 min-w-fit">Technical Specs</TabsTrigger>
           </TabsList>
           
           <TabsContent value="monitoring" className="space-y-6">
