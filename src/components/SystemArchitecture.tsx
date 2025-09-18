@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Cpu, Database, Eye, Radar, MapPin, Camera, Zap, HardDrive, Info } from "lucide-react";
 import systemArchImage from "@/assets/system-architecture.png";
+import LaTeXFormula from "./LaTeXFormula";
 
 export default function SystemArchitecture() {
   const hardwareComponents = [
@@ -17,7 +18,7 @@ export default function SystemArchitecture() {
         accuracy: "±0.5mm lateral, ±0.2mm vertical",
         range: "±150mm lateral, ±100mm vertical",
         frequency: "20kHz laser scan rate",
-        formula: "Geometric deviation = √((Lateral²) + (Vertical²))",
+        formula: "\\text{Geometric deviation} = \\sqrt{\\text{Lateral}^2 + \\text{Vertical}^2}",
         compliance: "EN 13848-1:2019, RDSO TM-448"
       }
     },
@@ -31,7 +32,7 @@ export default function SystemArchitecture() {
         accuracy: "±0.01° roll/pitch, ±0.05° yaw",
         range: "±180° all axes",
         frequency: "100Hz sampling rate",
-        formula: "Angular velocity ω = Δθ/Δt, Acceleration a = Δv/Δt",
+        formula: "\\omega = \\frac{\\Delta\\theta}{\\Delta t}, \\quad a = \\frac{\\Delta v}{\\Delta t}",
         compliance: "IEEE 952-1997 standard"
       }
     },
@@ -45,7 +46,7 @@ export default function SystemArchitecture() {
         accuracy: "±1m GPS, ±0.1m RFID, ±0.01m Encoder",
         range: "Global GPS coverage",
         frequency: "10Hz GPS, Event-based RFID/Encoder",
-        formula: "Position = GPS_base + RFID_offset + Encoder_distance",
+        formula: "\\text{Position} = \\text{GPS}_{\\text{base}} + \\text{RFID}_{\\text{offset}} + \\text{Encoder}_{\\text{distance}}",
         compliance: "NMEA 0183, ISO 18000-6C"
       }
     },
@@ -59,7 +60,7 @@ export default function SystemArchitecture() {
         accuracy: "4K @ 60fps, 1080p @ 120fps",
         range: "3m field of view width",
         frequency: "Variable 30-120fps",
-        formula: "Data rate = Resolution × FPS × Color_depth × Compression_ratio",
+        formula: "\\text{Data rate} = \\text{Resolution} \\times \\text{FPS} \\times \\text{Color depth} \\times \\text{Compression ratio}",
         compliance: "H.265/HEVC encoding"
       }
     }
@@ -75,7 +76,7 @@ export default function SystemArchitecture() {
         algorithm: "Extended Kalman Filter (EKF)",
         accuracy: "Position fusion ±0.5m, Attitude ±0.02°",
         frequency: "50Hz processing rate",
-        formula: "x(k+1) = F·x(k) + B·u(k) + w(k), z(k) = H·x(k) + v(k)",
+        formula: "x_{k+1} = F \\cdot x_k + B \\cdot u_k + w_k, \\quad z_k = H \\cdot x_k + v_k",
         compliance: "ISO 8855:2011 vehicle dynamics"
       }
     },
@@ -88,7 +89,7 @@ export default function SystemArchitecture() {
         algorithm: "CNN + YOLO v8 + ResNet-50",
         accuracy: "98.5% defect detection, 95.2% classification",
         frequency: "Real-time 30fps processing",
-        formula: "Confidence = softmax(CNN_output), IoU = Area_overlap / Area_union",
+        formula: "\\text{Confidence} = \\text{softmax}(\\text{CNN}_{\\text{output}}), \\quad \\text{IoU} = \\frac{\\text{Area}_{\\text{overlap}}}{\\text{Area}_{\\text{union}}}",
         compliance: "EN 13848-5:2017 inspection methods"
       }
     },
@@ -101,7 +102,7 @@ export default function SystemArchitecture() {
         algorithm: "Weighted geometric mean calculation",
         accuracy: "±2% TQI variance",
         frequency: "Real-time with 200m window",
-        formula: "TQI = √[(σLat² + σLong² + σVert² + σGauge² + σTwist²) / 5]",
+        formula: "\\text{TQI} = \\sqrt{\\frac{\\sigma_{\\text{Lat}}^2 + \\sigma_{\\text{Long}}^2 + \\sigma_{\\text{Vert}}^2 + \\sigma_{\\text{Gauge}}^2 + \\sigma_{\\text{Twist}}^2}{5}}",
         compliance: "EN 13848-6:2014 TQI standard"
       }
     },
@@ -114,7 +115,7 @@ export default function SystemArchitecture() {
         algorithm: "PostgreSQL with TimescaleDB",
         accuracy: "100% data integrity with checksums",
         frequency: "Continuous archival with compression",
-        formula: "Storage_efficiency = Compressed_size / Original_size × 100%",
+        formula: "\\text{Storage efficiency} = \\frac{\\text{Compressed size}}{\\text{Original size}} \\times 100\\%",
         compliance: "ACID properties, ISO 27001"
       }
     }
@@ -199,7 +200,9 @@ export default function SystemArchitecture() {
                         </div>
                         <div>
                           <h4 className="font-semibold text-sm mb-2">Technical Formula</h4>
-                          <code className="text-sm bg-muted p-2 rounded block">{component.specifications.formula}</code>
+                          <div className="bg-muted p-4 rounded-lg">
+                            <LaTeXFormula formula={component.specifications.formula} />
+                          </div>
                         </div>
                         <div>
                           <h4 className="font-semibold text-sm mb-2">Compliance Standards</h4>
@@ -264,7 +267,9 @@ export default function SystemArchitecture() {
                         </div>
                         <div>
                           <h4 className="font-semibold text-sm mb-2">Technical Formula</h4>
-                          <code className="text-sm bg-muted p-2 rounded block">{component.specifications.formula}</code>
+                          <div className="bg-muted p-4 rounded-lg">
+                            <LaTeXFormula formula={component.specifications.formula} />
+                          </div>
                         </div>
                         <div>
                           <h4 className="font-semibold text-sm mb-2">Compliance Standards</h4>
