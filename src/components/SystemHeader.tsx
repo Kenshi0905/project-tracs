@@ -26,11 +26,11 @@ export default function SystemHeader() {
               <p className="text-sm font-medium">System Status: Online</p>
               <p className="text-xs">EN 13848 & RDSO Compliant</p>
             </div>
-            <Button variant="outline" size="sm" className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10">
+            <Button variant="header" size="sm">
               <Settings className="w-4 h-4 mr-2" />
               Settings
             </Button>
-            <Button variant="outline" size="sm" className="border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10">
+            <Button variant="header" size="sm">
               <User className="w-4 h-4" />
             </Button>
           </div>
