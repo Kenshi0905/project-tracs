@@ -1,0 +1,19 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="refresh" content="0; url=./">
+    <title>404</title>
+  </head>
+  <body>
+    <script>
+      // SPA fallback for GitHub Pages: redirect to root keeping path as hash
+      (function() {
+        var l = window.location;
+        var base = l.origin + l.pathname.split('/').slice(0, -1).join('/') + '/';
+        var target = base + '#'+ (l.pathname + l.search + l.hash);
+        l.replace(target);
+      })();
+    </script>
+  </body>
+</html>
