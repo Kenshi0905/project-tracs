@@ -1,8 +1,22 @@
-# Welcome to your Lovable project
+# Intelligent Track Monitoring System (ITMS)
 
-## Project info
+A comprehensive railway track monitoring and management system that provides real-time track geometry analysis, AI-powered defect detection, and compliance monitoring for railway infrastructure.
+
+## Project Overview
 
 **URL**: https://lovable.dev/projects/f3d5d5cb-5bb8-4533-bf04-d9e89b0d8a43
+
+The ITMS is designed to monitor and analyze railway track conditions using advanced algorithms and real-time data processing. It helps railway operators maintain track safety, detect defects early, and ensure compliance with railway standards.
+
+## Key Features
+
+- **Real-Time Track Monitoring**: Live dashboard showing track geometry parameters
+- **AI-Powered Defect Detection**: Automated identification of track defects and anomalies  
+- **System Architecture Visualization**: Interactive system components with detailed specifications
+- **Compliance Monitoring**: Track compliance status against railway standards
+- **Exception Reporting**: Automated generation of exception reports for maintenance teams
+- **Technical Documentation**: Comprehensive technical specifications and formulas
+- **Data Export**: Export capabilities for reports and analysis data
 
 ## How can I edit this code?
 
