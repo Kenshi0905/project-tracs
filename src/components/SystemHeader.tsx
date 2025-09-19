@@ -11,8 +11,8 @@ export default function SystemHeader() {
             <div className="flex items-center space-x-3">
               <Train className="w-8 h-8 text-white" />
               <div>
-                <h1 className="text-2xl font-bold text-primary-foreground">ITMS</h1>
-                <p className="text-sm text-primary-foreground/80">Indigenous Track Monitoring System</p>
+                <h1 className="text-2xl font-bold text-primary-foreground">TRACS</h1>
+                <p className="text-sm text-primary-foreground/80">Track Reliability and Condition Surveillance</p>
               </div>
             </div>
             <Badge variant="secondary" className="ml-4">
