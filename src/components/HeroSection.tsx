@@ -68,9 +68,16 @@ export default function HeroSection() {
               <Shield className="w-5 h-5 mr-2" />
               View Live Dashboard
             </Button>
-            <Button variant="header" size="lg">
-              <Award className="w-5 h-5 mr-2" />
-              Technical Documentation
+            <Button variant="header" size="lg" asChild>
+              <a
+                href="https://docs.google.com/presentation/d/10o0g5m8tqTOrJl_9YQ87jeHeqtqsHYpaaKF-_CRO-ag/edit?usp=sharing"
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open Technical Documentation (Google Slides)"
+              >
+                <Award className="w-5 h-5 mr-2" />
+                Technical Documentation
+              </a>
             </Button>
           </div>
         </div>
