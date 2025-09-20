@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from image_processing import analyze_dent
+analyze_dent = None  # lazy-imported in /process to avoid startup failures
 try:
   from flask_cors import CORS
 except Exception:
@@ -62,17 +62,20 @@ PAGE_HTML = """
       button:hover { filter: brightness(1.05); }
       button:disabled { opacity: 0.6; cursor: not-allowed; }
       .actions { margin-top: 16px; display:flex; gap: 10px; align-items:center; }
-      .result { margin-top: 12px; }
+  .result { margin-top: 12px; }
       .result img { max-width: 100%; border-radius: 12px; border: 1px solid #223040; background: #0b1117; }
       .small { color: var(--muted); font-size: 12px; }
       /* Camera additions */
       .cam { display: grid; gap: 10px; }
       .cam-controls { display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
-      .cam-wrap { position: relative; background: #0b1117; border: 1px solid #1f2a38; border-radius: 12px; overflow: hidden; }
+  .cam-wrap { position: relative; background: #0b1117; border: 1px solid #1f2a38; border-radius: 12px; overflow: hidden; }
+  .calib-overlay { position:absolute; inset:0; cursor: crosshair; touch-action:none; }
       video#cam { width: 100%; max-height: 360px; display:block; }
+  video#camAuto { width: 100%; max-height: 360px; display:block; }
       img.preview { max-width: 100%; border-radius: 8px; border: 1px solid #223040; background: #0b1117; }
       select#cameraSelect { background: #0b1117; color: #dce4ee; border: 1px solid #1f2a38; border-radius: 8px; padding: 8px; }
       .hint { color: var(--muted); font-size: 12px; margin-top: -4px; }
+  .auto-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: center; }
     </style>
   </head>
   <body>
@@ -98,8 +101,8 @@ PAGE_HTML = """
           </div>
 
           <div class="panel cam" style="margin-top:16px;">
-            <h3>Camera capture (optional)</h3>
-            <div class="hint">Use your camera to capture both images. Captured photos auto-fill the file inputs above.</div>
+            <h3>Camera setup</h3>
+            <div class="hint">Start your camera. The first frame can be used as the baseline (perfect), then frames are captured automatically every 5s for comparison.</div>
             <div class="cam-controls">
               <select id="cameraSelect" aria-label="Choose camera"></select>
               <button type="button" id="startCam">Start camera</button>
@@ -122,6 +125,36 @@ PAGE_HTML = """
               <div>
                 <label>Preview — perfect</label>
                 <img id="previewPerfect" class="preview" alt="Perfect preview" />
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="margin-top:16px;">
+            <h3>Auto-check (baseline + live camera)</h3>
+            <div class="hint">First frame becomes the baseline (perfect) if none is chosen. Then a frame is captured every 5 seconds and compared to that baseline. Live feed on right; last captured frame on left. Use the calibration to convert pixels to millimeters.</div>
+            <div class="actions" style="margin-top:8px; gap:8px;">
+              <span class="small">Interval: 5s</span>
+              <label for="mmPerPx" class="small">Scale (mm/px)</label>
+              <input id="mmPerPx" type="number" value="1" step="0.01" min="0" style="width:90px; padding:6px 8px; background:#0b1117; border:1px solid #1f2a38; color:#dce4ee; border-radius:8px;" />
+              <label for="fovMm" class="small">FOV height (mm)</label>
+              <input id="fovMm" type="number" value="480" step="1" min="1" style="width:100px; padding:6px 8px; background:#0b1117; border:1px solid #1f2a38; color:#dce4ee; border-radius:8px;" />
+              <button type="button" id="setScaleFov">Set scale from FOV</button>
+              <button type="button" id="calibrateLine">Calibrate (2 points)</button>
+              <button type="button" id="resetScale" title="Unlock and revert to auto scale">Reset scale</button>
+              <button type="button" id="autoStart">Start Auto Check</button>
+              <button type="button" id="autoStop" disabled>Stop</button>
+              <span id="autoStatus" class="small">Idle</span>
+            </div>
+            <div class="auto-grid" style="margin-top:10px;">
+              <div>
+                <label class="small">Last captured frame</label>
+                <img id="previewAuto" class="preview" alt="Last auto-captured frame" />
+              </div>
+              <div>
+                <label class="small">Live video feed</label>
+                <div class="cam-wrap">
+                  <video id="camAuto" autoplay playsinline muted></video>
+                  <canvas id="calibCanvas" class="calib-overlay" style="display:none"></canvas>
+                </div>
               </div>
             </div>
           </div>
@@ -167,14 +200,28 @@ PAGE_HTML = """
       const captureDentedBtn = document.getElementById('captureDented');
       const capturePerfectBtn = document.getElementById('capturePerfect');
       const video = document.getElementById('cam');
-      const canvas = document.getElementById('canvas');
-      const cameraSelect = document.getElementById('cameraSelect');
+  const canvas = document.getElementById('canvas');
+  const camAuto = document.getElementById('camAuto');
+  const calibCanvas = document.getElementById('calibCanvas');
+    const cameraSelect = document.getElementById('cameraSelect');
       const inputDented = document.querySelector('input[name="dented"]');
       const inputPerfect = document.querySelector('input[name="perfect"]');
-      const previewDented = document.getElementById('previewDented');
-      const previewPerfect = document.getElementById('previewPerfect');
+  const previewDented = document.getElementById('previewDented');
+  const previewPerfect = document.getElementById('previewPerfect');
+  const autoStartBtn = document.getElementById('autoStart');
+  const autoStopBtn = document.getElementById('autoStop');
+  // fixed interval = 5s
+  const autoStatus = document.getElementById('autoStatus');
+  const previewAuto = document.getElementById('previewAuto');
+  const mmPerPxInput = document.getElementById('mmPerPx');
+  const fovMmInput = document.getElementById('fovMm');
+  const setScaleFovBtn = document.getElementById('setScaleFov');
+  const calibrateLineBtn = document.getElementById('calibrateLine');
+  const resetScaleBtn = document.getElementById('resetScale');
 
-      let currentStream = null;
+  let currentStream = null;
+  let autoTimer = null;
+  let autoBusy = false;
 
       async function listCameras() {
         if (!navigator.mediaDevices?.enumerateDevices) return;
@@ -189,6 +236,27 @@ PAGE_HTML = """
             cameraSelect.appendChild(opt);
           });
         } catch (e) { console.warn('enumerateDevices error', e); }
+      }
+
+  let userLockedScale = false; // set to true when user manually calibrates
+  const LS_KEY_SCALE = 'tracs_mm_per_px';
+  const LS_KEY_LOCK = 'tracs_scale_locked';
+
+      function updateScaleFromStream() {
+        try {
+          if (!currentStream) return;
+          const track = currentStream.getVideoTracks()[0];
+          const settings = track?.getSettings?.() || {};
+          const h = settings.height || video.videoHeight || 0;
+          if (userLockedScale) return; // don't override manual calibration
+          if (h > 0 && mmPerPxInput) {
+            // Default heuristic: assume 1 px = 1 mm at 480p; scale ∝ 1/height
+            const mmPerPx = 480 / h;
+            if (Number.isFinite(mmPerPx) && mmPerPx > 0) {
+              mmPerPxInput.value = mmPerPx.toFixed(3);
+            }
+          }
+        } catch {}
       }
 
       async function startCamera() {
@@ -206,6 +274,21 @@ PAGE_HTML = """
           const stream = await navigator.mediaDevices.getUserMedia(constraints);
           currentStream = stream;
           video.srcObject = stream;
+          if (camAuto) {
+            camAuto.srcObject = stream;
+            // size overlay canvas to video client size
+            camAuto.onloadedmetadata = () => {
+              setTimeout(() => {
+                if (!calibCanvas) return;
+                calibCanvas.width = camAuto.videoWidth;
+                calibCanvas.height = camAuto.videoHeight;
+                calibCanvas.style.width = camAuto.clientWidth + 'px';
+                calibCanvas.style.height = camAuto.clientHeight + 'px';
+              }, 100);
+            };
+          }
+          // Wait a microtask to ensure metadata is ready, then compute default scale
+          setTimeout(updateScaleFromStream, 200);
           startCamBtn.disabled = true;
           stopCamBtn.disabled = false;
           captureDentedBtn.disabled = false;
@@ -225,7 +308,8 @@ PAGE_HTML = """
         stopCamBtn.disabled = true;
         captureDentedBtn.disabled = true;
         capturePerfectBtn.disabled = true;
-        video.srcObject = null;
+  video.srcObject = null;
+  if (camAuto) camAuto.srcObject = null;
       }
 
       async function captureToInput(target) {
@@ -253,6 +337,183 @@ PAGE_HTML = """
         }
       }
 
+      async function captureFrameBlob() {
+        if (!currentStream) return null;
+        const track = currentStream.getVideoTracks()[0];
+        const settings = track.getSettings();
+        const w = settings.width || 1280;
+        const h = settings.height || 720;
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, w, h);
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.9));
+        if (blob) previewAuto.src = URL.createObjectURL(blob);
+        return blob;
+      }
+
+      function renderDetails(metrics) {
+        if (!metrics) { details.textContent = 'No metrics available (insufficient features).'; return; }
+        const scale = parseFloat(mmPerPxInput?.value || '1') || 1;
+        const toMM = (v) => (v * scale).toFixed(2);
+        const m = metrics;
+        details.innerHTML = `
+          <ul style="margin:0; padding-left: 18px;">
+            <li><strong>Max deviation:</strong> ${toMM(m.max_deviation_px)} mm</li>
+            <li><strong>Mean deviation:</strong> ${toMM(m.mean_deviation_px)} mm</li>
+            <li><strong>RMS deviation:</strong> ${toMM(m.rms_deviation_px)} mm</li>
+            <li><strong>95th percentile:</strong> ${toMM(m.p95_deviation_px)} mm</li>
+            <li><strong>Profile length:</strong> ${toMM(m.total_profile_length_px)} mm</li>
+            <li><strong>Worst point (index):</strong> ${m.worst_point?.index ?? '-'} </li>
+          </ul>`;
+      }
+
+      async function runAutoCheckOnce() {
+        if (autoBusy) return;
+        if (!inputPerfect.files || inputPerfect.files.length === 0) {
+          autoStatus.textContent = 'Select a perfect image first.';
+          return;
+        }
+        autoBusy = true;
+        autoStatus.textContent = 'Capturing…';
+        try {
+          if (!currentStream) { await startCamera(); }
+          const blob = await captureFrameBlob();
+          if (!blob) { autoStatus.textContent = 'Capture failed'; autoBusy = false; return; }
+          const dentedFile = new File([blob], `dented-auto-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          const fd = new FormData();
+          const perfectFile = inputPerfect.files[0];
+          fd.append('perfect', perfectFile, perfectFile.name || 'perfect.jpg');
+          fd.append('dented', dentedFile, dentedFile.name);
+          const res = await fetch('/process', { method: 'POST', body: fd });
+          let data; try { data = await res.json(); } catch { data = null; }
+          if (!res.ok) {
+            const msg = data && data.error ? data.error : `Auto-check failed (HTTP ${res.status}).`;
+            autoStatus.textContent = msg; autoBusy = false; return;
+          }
+          result.innerHTML = `<p class="small">Auto-check: ${data.time.toFixed(2)}s</p><img src="${data.image_url}" alt="Profile Comparison" />`;
+          renderDetails(data.metrics);
+          autoStatus.textContent = 'Last run OK';
+        } catch (e) {
+          console.error(e);
+          autoStatus.textContent = 'Auto-check error';
+        } finally {
+          autoBusy = false;
+        }
+      }
+
+      async function startAutoCheck() {
+  const sec = 5;
+        if (!currentStream) { await startCamera(); }
+        // If no perfect is selected, capture baseline from camera as perfect
+        if (!inputPerfect.files || inputPerfect.files.length === 0) {
+          const baseline = await captureFrameBlob();
+          if (!baseline) { alert('Could not capture baseline frame.'); return; }
+          const baseFile = new File([baseline], `perfect-baseline-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          const dt = new DataTransfer();
+          dt.items.add(baseFile);
+          inputPerfect.files = dt.files;
+          previewPerfect.src = URL.createObjectURL(baseline);
+          autoStatus.textContent = 'Baseline captured';
+        }
+        if (autoTimer) clearInterval(autoTimer);
+        await runAutoCheckOnce();
+        autoTimer = setInterval(runAutoCheckOnce, sec * 1000);
+        autoStartBtn.disabled = true; autoStopBtn.disabled = false;
+        autoStatus.textContent = `Running every ${sec}s`;
+      }
+
+      function stopAutoCheck() {
+        if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+        autoStartBtn.disabled = false; autoStopBtn.disabled = true;
+        autoStatus.textContent = 'Stopped';
+      }
+
+      // Calibration: set mm/px from known field-of-view height (mm)
+      function setScaleFromFov() {
+        const fovMm = parseFloat(fovMmInput?.value || '0');
+        if (!currentStream) { alert('Start the camera first to read video height.'); return; }
+        const track = currentStream.getVideoTracks()[0];
+        const settings = track?.getSettings?.() || {};
+        const h = settings.height || video.videoHeight || 0;
+        if (!(fovMm > 0) || !(h > 0)) { alert('Invalid FOV (mm) or video height.'); return; }
+        const mmPerPx = fovMm / h;
+        if (Number.isFinite(mmPerPx) && mmPerPx > 0) {
+          mmPerPxInput.value = mmPerPx.toFixed(3);
+          userLockedScale = true;
+          try { localStorage.setItem(LS_KEY_SCALE, mmPerPxInput.value); localStorage.setItem(LS_KEY_LOCK, '1'); } catch {}
+          autoStatus.textContent = `Scale set: ${mmPerPxInput.value} mm/px (h=${h}px)`;
+        }
+      }
+
+      setScaleFovBtn?.addEventListener('click', setScaleFromFov);
+
+      // Manual input lock/persist
+      mmPerPxInput?.addEventListener('change', () => {
+        const v = parseFloat(mmPerPxInput.value);
+        if (v > 0) { userLockedScale = true; try { localStorage.setItem(LS_KEY_SCALE, v.toFixed(3)); localStorage.setItem(LS_KEY_LOCK, '1'); } catch {} }
+      });
+      resetScaleBtn?.addEventListener('click', () => { userLockedScale = false; try { localStorage.removeItem(LS_KEY_LOCK); } catch {}; updateScaleFromStream(); autoStatus.textContent = 'Scale reset to auto heuristic.'; });
+
+      // Two-point calibration on overlay
+      let calibActive = false;
+      let p1 = null; let p2 = null;
+      function drawOverlay() {
+        if (!calibCanvas || !calibActive) return;
+        const ctx = calibCanvas.getContext('2d');
+        ctx.clearRect(0,0,calibCanvas.width, calibCanvas.height);
+        ctx.strokeStyle = 'rgba(34,211,238,0.9)';
+        ctx.fillStyle = 'rgba(34,211,238,0.9)';
+        ctx.lineWidth = 2;
+        if (p1) { ctx.beginPath(); ctx.arc(p1.x, p1.y, 5, 0, Math.PI*2); ctx.fill(); }
+        if (p2) { ctx.beginPath(); ctx.arc(p2.x, p2.y, 5, 0, Math.PI*2); ctx.fill(); }
+        if (p1 && p2) { ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke(); }
+      }
+      function toCanvasCoords(ev) {
+        const rect = calibCanvas.getBoundingClientRect();
+        const sx = calibCanvas.width / rect.width;
+        const sy = calibCanvas.height / rect.height;
+        const x = (ev.clientX - rect.left) * sx;
+        const y = (ev.clientY - rect.top) * sy;
+        return { x, y };
+      }
+      function handleOverlayClick(ev) {
+        if (!calibActive) return;
+        const pt = toCanvasCoords(ev);
+        if (!p1) p1 = pt; else if (!p2) p2 = pt; else { p1 = pt; p2 = null; }
+        drawOverlay();
+        if (p1 && p2) {
+          const dx = p1.x - p2.x; const dy = p1.y - p2.y;
+          const distPx = Math.hypot(dx, dy);
+          const mm = parseFloat(prompt('Enter real distance between points (mm):', '100') || '0');
+          if (mm > 0 && distPx > 0) {
+            const mmPerPx = mm / distPx;
+            mmPerPxInput.value = mmPerPx.toFixed(3);
+            userLockedScale = true;
+            try { localStorage.setItem(LS_KEY_SCALE, mmPerPxInput.value); localStorage.setItem(LS_KEY_LOCK, '1'); } catch {}
+            autoStatus.textContent = `Scale set: ${mmPerPxInput.value} mm/px`;
+          }
+          // end calibration session
+          calibActive = false; calibCanvas.style.display = 'none'; p1 = null; p2 = null; drawOverlay();
+        }
+      }
+      calibCanvas?.addEventListener('click', handleOverlayClick);
+      calibrateLineBtn?.addEventListener('click', () => {
+        if (!camAuto?.videoWidth) { alert('Start the camera first.'); return; }
+        calibCanvas.width = camAuto.videoWidth;
+        calibCanvas.height = camAuto.videoHeight;
+        calibCanvas.style.display = 'block';
+        calibActive = true; p1 = null; p2 = null; drawOverlay();
+        autoStatus.textContent = 'Click two points on the overlay to calibrate.';
+      });
+
+      // Restore scale from previous session
+      try {
+        const saved = localStorage.getItem(LS_KEY_SCALE);
+        const locked = localStorage.getItem(LS_KEY_LOCK) === '1';
+        if (saved) { mmPerPxInput.value = saved; userLockedScale = locked; }
+      } catch {}
+
       // Initialize device list when permissions are granted
       if (navigator.mediaDevices?.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ video: true, audio: false })
@@ -265,7 +526,10 @@ PAGE_HTML = """
       cameraSelect?.addEventListener('change', () => { if (currentStream) startCamera(); });
       captureDentedBtn?.addEventListener('click', () => captureToInput('dented'));
       capturePerfectBtn?.addEventListener('click', () => captureToInput('perfect'));
+  autoStartBtn?.addEventListener('click', startAutoCheck);
+  autoStopBtn?.addEventListener('click', stopAutoCheck);
       window.addEventListener('beforeunload', stopCamera);
+  window.addEventListener('beforeunload', stopAutoCheck);
 
       // Form submit -> process images
       form.addEventListener('submit', async (e) => {
@@ -280,20 +544,7 @@ PAGE_HTML = """
           return;
         }
         result.innerHTML = `<p class="small">Took ${data.time.toFixed(2)}s</p><img src="${data.image_url}" alt="Profile Comparison" />`;
-        if (data.metrics) {
-          const m = data.metrics;
-          details.innerHTML = `
-            <ul style="margin:0; padding-left: 18px;">
-              <li><strong>Max deviation:</strong> ${m.max_deviation_px} px</li>
-              <li><strong>Mean deviation:</strong> ${m.mean_deviation_px} px</li>
-              <li><strong>RMS deviation:</strong> ${m.rms_deviation_px} px</li>
-              <li><strong>95th percentile:</strong> ${m.p95_deviation_px} px</li>
-              <li><strong>Profile length:</strong> ${m.total_profile_length_px} px</li>
-              <li><strong>Worst point (index):</strong> ${m.worst_point?.index ?? '-'} </li>
-            </ul>`;
-        } else {
-          details.textContent = 'No metrics available (insufficient features).';
-        }
+        renderDetails(data.metrics);
       });
 
       // --- WebUSB helpers ---
@@ -378,6 +629,14 @@ def process():
   perfect.save(perfect_path)
 
   output_path = workdir / 'profile_comparison.jpg'
+  global analyze_dent
+  if analyze_dent is None:
+    # Lazy import to prevent startup crashes if dependencies aren't ready
+    try:
+      from image_processing import analyze_dent as _analyze
+      analyze_dent = _analyze
+    except Exception as e:
+      return {'error': f'Failed to import image_processing: {e}'}, 500
   try:
     result = analyze_dent(
       str(perfect_path),
