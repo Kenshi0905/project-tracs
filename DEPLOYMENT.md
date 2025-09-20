@@ -16,7 +16,7 @@ This guide shows two easy ways to host your Flask + OpenCV app, and how to wire 
 ## 2) Render
 - Create a **Web Service** from repo
 - Build command: `pip install -r requirements.txt`
-- Start command: `gunicorn server.app:app --timeout 180 --workers 1 --threads 2 --preload -b 0.0.0.0:$PORT`
+- Start command: `sh -c "cd server && gunicorn app:app --timeout 180 --workers 1 --threads 2 --preload -b 0.0.0.0:$PORT"`
 - Env vars: same as above
 
 ## 3) Docker-based (Fly.io / Cloud Run)
