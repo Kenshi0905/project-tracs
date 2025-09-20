@@ -18,4 +18,4 @@ COPY . .
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["gunicorn", "server.app:app", "--timeout", "180", "--workers", "1", "--threads", "2", "--preload", "-b", "0.0.0.0:8080"]
+CMD ["sh", "-c", "gunicorn server.app:app --timeout 180 --workers 1 --threads 2 --preload -b 0.0.0.0:${PORT:-8080}"]
