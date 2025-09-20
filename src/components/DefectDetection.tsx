@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Eye, CheckCircle, XCircle, Clock, Download } from "lucide-react";
+import { AlertTriangle, Eye, XCircle, Clock, Download } from "lucide-react";
 
 export default function DefectDetection() {
   const recentDetections = [
@@ -65,10 +65,15 @@ export default function DefectDetection() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "confirmed": return <CheckCircle className="w-4 h-4 text-success" />;
-      case "pending": return <Clock className="w-4 h-4 text-warning" />;
-      case "reviewed": return <Eye className="w-4 h-4 text-primary" />;
-      default: return <XCircle className="w-4 h-4 text-muted-foreground" />;
+      // Defects are negative findings; show a red cross when confirmed.
+      case "confirmed":
+        return <XCircle className="w-4 h-4 text-error" />;
+      case "pending":
+        return <Clock className="w-4 h-4 text-warning" />;
+      case "reviewed":
+        return <Eye className="w-4 h-4 text-primary" />;
+      default:
+  return <XCircle className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
