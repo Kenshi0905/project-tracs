@@ -145,6 +145,10 @@ PAGE_HTML = """
 def index():
     return render_template_string(PAGE_HTML)
 
+@app.get('/healthz')
+def healthz():
+  return {'status': 'ok'}, 200
+
 @app.post('/process')
 def process():
   dented = request.files.get('dented')
@@ -191,4 +195,6 @@ def result(uid: str):
     return send_file(img_path, mimetype='image/jpeg')
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5050, debug=True)
+  port = int(os.getenv('PORT', '5050'))
+  host = os.getenv('HOST', '0.0.0.0')
+  app.run(host=host, port=port, debug=True)
