@@ -1,4 +1,4 @@
-# Intelligent Track Monitoring System (ITMS)
+# Integrated Track Monitoring System (ITMS)
 
 A comprehensive railway track monitoring and management system that provides real-time track geometry analysis, AI-powered defect detection, and compliance monitoring for railway infrastructure.
 
